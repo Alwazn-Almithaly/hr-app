@@ -31,7 +31,7 @@
 <body>
 <!-- The HR system (Google Apps Script web app) runs live inside this frame. -->
 <iframe id="app" title="نظام الموارد البشرية — الوزن المثالي"
-  allow="clipboard-read; clipboard-write; fullscreen"
+  allow="clipboard-read; clipboard-write; fullscreen; geolocation"
   referrerpolicy="strict-origin-when-cross-origin"></iframe>
 
 <div id="splash" role="status" aria-live="polite">
@@ -60,7 +60,9 @@
     splash.classList.add('hide');
   } else {
     frame.addEventListener('load', function () { splash.classList.add('hide'); });
-    frame.src = HR_SYSTEM_URL;
+    // ?v=duty opens the supervisors' duty page ("دوامي") instead of the full system.
+    var view = new URLSearchParams(location.search).get('v');
+    frame.src = HR_SYSTEM_URL + (view === 'duty' ? '?v=duty' : '');
   }
   window.addEventListener('offline', function () { document.getElementById('offline').classList.add('show'); });
   window.addEventListener('online', function () { document.getElementById('offline').classList.remove('show'); });
