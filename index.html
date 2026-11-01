@@ -6,7 +6,16 @@
 <title>الوزن المثالي — الموارد البشرية</title>
 <meta name="description" content="نظام الموارد البشرية لشركة الوزن المثالي">
 <meta name="theme-color" content="#2f6b3a">
-<link rel="manifest" href="manifest.webmanifest">
+<!-- ?v=duty installs the supervisors' "دوامي" app (its own name, opens on the duty page). -->
+<script>
+  (function () {
+    var duty = new URLSearchParams(location.search).get('v') === 'duty';
+    document.write('<link rel="manifest" href="' + (duty ? 'manifest-duty.webmanifest' : 'manifest.webmanifest') + '">' +
+      '<meta name="apple-mobile-web-app-title" content="' + (duty ? 'دوامي' : 'الوزن المثالي HR') + '">');
+    if (duty) document.title = 'دوامي — الوزن المثالي';
+  })();
+</script>
+<meta name="apple-mobile-web-app-capable" content="yes">
 <link rel="icon" type="image/png" sizes="48x48" href="favicon-48.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <style>
