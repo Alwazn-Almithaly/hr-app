@@ -9,10 +9,11 @@
 <!-- ?v=duty installs the supervisors' "دوامي" app (its own name, opens on the duty page). -->
 <script>
   (function () {
-    var duty = new URLSearchParams(location.search).get('v') === 'duty';
-    document.write('<link rel="manifest" href="' + (duty ? 'manifest-duty.webmanifest' : 'manifest.webmanifest') + '">' +
-      '<meta name="apple-mobile-web-app-title" content="' + (duty ? 'دوامي' : 'الوزن المثالي HR') + '">');
+    var v = new URLSearchParams(location.search).get('v'), duty = v === 'duty', branch = v === 'branch';
+    document.write('<link rel="manifest" href="' + (duty ? 'manifest-duty.webmanifest' : branch ? 'manifest-branch.webmanifest' : 'manifest.webmanifest') + '">' +
+      '<meta name="apple-mobile-web-app-title" content="' + (duty ? 'دوامي' : branch ? 'دوامي — الفروع' : 'الوزن المثالي HR') + '">');
     if (duty) document.title = 'دوامي — الوزن المثالي';
+    if (branch) document.title = 'دوامي — الفروع';
   })();
 </script>
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -69,9 +70,10 @@
     splash.classList.add('hide');
   } else {
     frame.addEventListener('load', function () { splash.classList.add('hide'); });
-    // ?v=duty opens the supervisors' duty page ("دوامي") instead of the full system.
+    // ?v=duty opens the supervisors' duty page ("دوامي"), ?v=branch the branch staff page
+    // ("دوامي — الفروع"), instead of the full system.
     var view = new URLSearchParams(location.search).get('v');
-    frame.src = HR_SYSTEM_URL + (view === 'duty' ? '?v=duty' : '');
+    frame.src = HR_SYSTEM_URL + (view === 'duty' || view === 'branch' ? '?v=' + view : '');
   }
   window.addEventListener('offline', function () { document.getElementById('offline').classList.add('show'); });
   window.addEventListener('online', function () { document.getElementById('offline').classList.remove('show'); });
