@@ -93,6 +93,29 @@
   });
   window.addEventListener('appinstalled', function () { installBtn.classList.remove('show'); });
 
+  // Stay signed in (2026-11-10): the «دوامي» page inside the frame keeps the employee's device token
+  // here, in this app's own storage, because an iPhone drops the frame's storage when the app is
+  // closed. Only a page inside our own frame, served by Google Apps Script, may read or change it;
+  // signing out removes it.
+  var REMEMBER_KEY = 'almithalyDutyRemember', REMEMBER_TYPE = 'almithaly-remember';
+  function fromOurFrame(src) {
+    var w = src;
+    for (var i = 0; w && i < 6; i++) { if (w === frame.contentWindow) return true; try { if (w === w.parent) break; w = w.parent; } catch (e) { return false; } }
+    return false;
+  }
+  window.addEventListener('message', function (ev) {
+    var d = ev.data;
+    if (!d || d.type !== REMEMBER_TYPE || !/^https:\/\/[a-z0-9-]+\.googleusercontent\.com$/.test(ev.origin) || !fromOurFrame(ev.source)) return;
+    if (d.op === 'set') {
+      try { if (typeof d.token === 'string' && d.token && d.token.length < 400) localStorage.setItem(REMEMBER_KEY, d.token); else localStorage.removeItem(REMEMBER_KEY); } catch (e) {}
+    } else if (d.op === 'get') {
+      var t = ''; try { t = localStorage.getItem(REMEMBER_KEY) || ''; } catch (e) {}
+      try { ev.source.postMessage({ type: REMEMBER_TYPE, op: 'value', token: t }, ev.origin); } catch (e) {}
+    }
+  });
+  // Ask the phone to keep this app's storage (Android / Chrome; ignored elsewhere).
+  try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
+
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', function () { navigator.serviceWorker.register('sw.js').catch(function () {}); });
   }
