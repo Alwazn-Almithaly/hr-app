@@ -32,6 +32,10 @@
   @media (prefers-reduced-motion:reduce){.spinner{animation:none}#splash{transition:none}}
   #offline{display:none;position:fixed;inset:0;align-items:center;justify-content:center;flex-direction:column;gap:10px;background:var(--bg);text-align:center;padding:16px}
   #offline.show{display:flex}
+  #stuck{display:none;position:fixed;inset:0;z-index:4;align-items:center;justify-content:center;flex-direction:column;gap:10px;background:var(--bg);text-align:center;padding:16px}
+  #stuck.show{display:flex}
+  #stuck b{font-size:18px;color:var(--purple)}
+  #stuck button{margin-top:8px;border:0;border-radius:10px;padding:10px 22px;background:var(--green);color:#fff;font:inherit;font-weight:700;cursor:pointer}
   #offline b{font-size:18px;color:var(--purple)}
   #offline button{margin-top:8px;border:0;border-radius:10px;padding:10px 22px;background:var(--green);color:#fff;font:inherit;font-weight:700;cursor:pointer}
   #install{display:none;position:fixed;bottom:16px;left:16px;z-index:5;border:0;border-radius:999px;padding:10px 18px;background:var(--green);color:#fff;font:inherit;font-weight:700;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.2)}
@@ -56,6 +60,12 @@
   <button type="button" onclick="location.reload()">إعادة المحاولة</button>
 </div>
 
+<div id="stuck" role="alert">
+  <b>تعذّر فتح النظام</b>
+  <span>لم تكتمل صفحة النظام. اضغط إعادة المحاولة.</span>
+  <button type="button" id="stuckRetry">إعادة المحاولة</button>
+</div>
+
 <button id="install" type="button">تثبيت التطبيق على الجهاز</button>
 
 <script>
@@ -69,14 +79,53 @@
   var view = new URLSearchParams(location.search).get('v');
   if (view === 'duty') document.getElementById('splashText').textContent = 'جارٍ فتح تسجيل دوام مشرفي الفروع…';
   if (view === 'branch') document.getElementById('splashText').textContent = 'جارٍ فتح تسجيل دوام موظفي الفروع…';
+  // 2026-11-15 (white page after refresh): the loading screen stays until the page inside the
+  // frame says it has rendered ('almithaly-app-ready'). A frame that finished loading but stays
+  // blank is opened again once (fresh link), then a retry message shows instead of a white window.
+  var stuck = document.getElementById('stuck');
+  var appReady = false, tries = 0, readyTimer = null;
+  function frameUrl() {
+    // ?v=duty opens the supervisors' duty page ("دوامي"), ?v=branch the branch staff page
+    // ("دوامي — الفروع"), instead of the full system.
+    var q = [];
+    if (view === 'duty' || view === 'branch') q.push('v=' + view);
+    if (tries > 0) q.push('_r=' + Date.now());
+    return HR_SYSTEM_URL + (q.length ? '?' + q.join('&') : '');
+  }
+  function waitReady(ms) { clearTimeout(readyTimer); readyTimer = setTimeout(notReady, ms); }
+  function openFrame() {
+    appReady = false;
+    splash.classList.remove('hide');
+    stuck.classList.remove('show');
+    frame.src = frameUrl();
+    waitReady(60000);          // nothing at all after a minute
+  }
+  function markReady() {
+    if (appReady) return;
+    appReady = true; clearTimeout(readyTimer);
+    splash.classList.add('hide'); stuck.classList.remove('show');
+  }
+  function notReady() {
+    if (appReady) return;
+    if (tries < 1) { tries++; openFrame(); return; }
+    splash.classList.add('hide'); stuck.classList.add('show');
+  }
+  window.addEventListener('message', function (ev) {
+    var d = ev.data;
+    if (!d || d.type !== 'almithaly-app-ready' || !/^https:\/\/[a-z0-9-]+\.googleusercontent\.com$/.test(ev.origin) || !fromOurFrame(ev.source)) return;
+    markReady();
+  });
+  // The page says "ready" before its frame finishes loading; a frame that loaded without it is blank.
+  frame.addEventListener('load', function () { if (!appReady) waitReady(10000); });
+  document.getElementById('stuckRetry').addEventListener('click', function () { tries = 0; openFrame(); });
+  // Back/forward cache: a restored window can come back with an empty frame.
+  window.addEventListener('pageshow', function (e) { if (e.persisted && navigator.onLine !== false) { tries = 0; openFrame(); } });
+
   if (navigator.onLine === false) {
     document.getElementById('offline').classList.add('show');
     splash.classList.add('hide');
   } else {
-    frame.addEventListener('load', function () { splash.classList.add('hide'); });
-    // ?v=duty opens the supervisors' duty page ("دوامي"), ?v=branch the branch staff page
-    // ("دوامي — الفروع"), instead of the full system.
-    frame.src = HR_SYSTEM_URL + (view === 'duty' || view === 'branch' ? '?v=' + view : '');
+    openFrame();
   }
   window.addEventListener('offline', function () { document.getElementById('offline').classList.add('show'); });
   window.addEventListener('online', function () { document.getElementById('offline').classList.remove('show'); });
